@@ -53,10 +53,6 @@ WAIS5 = WAIS_COMMON + [
 ] + [MeasureName(name, "scaled") for name in (
     "Digit Sequencing", "Running Digits", "Digits Forward", "Digits Backward",
     "Set Relations", "Symbol Span", "Spatial Addition", "Naming Speed Quantity")]
-WAIS4 = WAIS_COMMON + [
-    MeasureName("Perceptual Reasoning", aliases=("PRI", "Perceptual Reasoning Index")),
-] + [MeasureName(name, "scaled") for name in (
-    "Digit Span", "Cancellation", "Picture Completion")]
 
 PAI = [MeasureName(name, "t", (code,)) for code, name in (
     ("ICN", "Inconsistency"), ("INF", "Infrequency"),
@@ -76,7 +72,7 @@ PAI = [MeasureName(name, "t", (code,)) for code, name in (
     "SCZ-P", "SCZ-S", "SCZ-T", "BOR-A", "BOR-I", "BOR-N", "BOR-S",
     "ANT-A", "ANT-E", "ANT-S", "AGG-A", "AGG-V", "AGG-P")]
 
-CATALOGS = {"WIAT-4": WIAT, "WAIS-5": WAIS5, "WAIS-IV": WAIS4, "PAI": PAI}
+CATALOGS = {"WIAT-4": WIAT, "WAIS-5": WAIS5, "PAI": PAI}
 TESTS = tuple(CATALOGS)
 SCORE_TYPES = {"standard": "Standard score", "scaled": "Scaled score", "t": "T score"}
 

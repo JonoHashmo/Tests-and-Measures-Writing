@@ -91,52 +91,6 @@
       "overrides": {}
     }
   },
-  "WAIS-IV": {
-    "status": "Owner-defined standard-score categories. Scaled-score categories pending.",
-    "aliases": {},
-    "rules": {
-      "standard": [
-        {
-          "min": 1,
-          "max": 69,
-          "label": "Extremely Low"
-        },
-        {
-          "min": 70,
-          "max": 79,
-          "label": "Very Low"
-        },
-        {
-          "min": 80,
-          "max": 89,
-          "label": "Below Average"
-        },
-        {
-          "min": 90,
-          "max": 109,
-          "label": "Average"
-        },
-        {
-          "min": 110,
-          "max": 119,
-          "label": "Above Average"
-        },
-        {
-          "min": 120,
-          "max": 129,
-          "label": "Very High"
-        },
-        {
-          "min": 130,
-          "max": 250,
-          "label": "Extremely High"
-        }
-      ],
-      "scaled": [],
-      "t": [],
-      "overrides": {}
-    }
-  },
   "PAI": {
     "status": "PAI scale-specific categories pending.",
     "aliases": {},

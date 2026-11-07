@@ -914,7 +914,7 @@ class App(tk.Tk):
 
     def help(self):
         self.show_notes("Getting started", [
-            "1. Select WIAT-4, WAIS-5, WAIS-IV, or PAI. Import a score table, paste cells from Word/Excel, or enter scores manually. Map the name and score columns, plus any other fields.",
+            "1. Select WIAT-4, WAIS-5, or PAI. Import a score table, paste cells from Word/Excel, or enter scores manually. Map the name and score columns, plus any other fields.",
             "2. Review the imported scores and score types. Double-click a row to edit it. Choose category cutoffs and labels under Cutoff rules.",
             "3. Import a .docx/.txt template or paste your wording. Automatic mode adds a parenthetical score after each matching measure name. Use {{Measure.score}}, {{Measure.category}}, {{Measure.percentile}}, {{Measure.ci}}, or {{Measure.summary}} for exact placement.",
             "4. Review the highlighted insertions and any notes. Copy or export your report to Word or text. Save a project to reuse the template, scores, and rules together.",

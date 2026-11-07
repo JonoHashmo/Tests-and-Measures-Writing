@@ -55,7 +55,7 @@ def go(step):
 
 
 def load_example(test):
-    stem = {'WIAT-4': 'WIAT4', 'WAIS-5': 'WAIS5', 'WAIS-IV': 'WAIS5', 'PAI': 'PAI'}[test]
+    stem = {'WIAT-4': 'WIAT4', 'WAIS-5': 'WAIS5', 'PAI': 'PAI'}[test]
     table = read_tables(EXAMPLES / f'{stem}_scores.csv')[0]
     st.session_state.scores, _ = fixed_scores(table, test)
     template = load_template(EXAMPLES / f'{stem}_template.txt')
@@ -66,6 +66,15 @@ def load_example(test):
 
 def main():
     st.set_page_config(page_title='Measure | Report workspace', page_icon='📄', layout='wide')
+    st.markdown('''<style>
+        [data-testid="stCaptionContainer"],
+        [data-testid="stCaptionContainer"] p {
+            font-size: 1.05rem;
+            line-height: 1.6;
+            color: var(--text-color);
+            opacity: 1;
+        }
+    </style>''', unsafe_allow_html=True)
     if 'step' not in st.session_state:
         st.session_state.update(step=0, active_test=None, scores=[], current_scores=[],
             template=Template(''), wording='', auto=True, pr=True, revision=0)
@@ -102,7 +111,7 @@ def main():
     profile = profile_for(test)
     st.session_state.rules = profile['rules']
     st.title(test)
-    st.caption('Hosted uploads are processed on the server. Download your report before clearing your session.')
+    st.caption("Don't forget to download your report at the end!")
     if step == 1:
         if st.button('Try fictional example'):
             load_example(test)
@@ -226,6 +235,7 @@ def review_step(test):
     st.text_area('Report preview', value=result.text, height=300, disabled=True)
     if result.errors:
         return
+    st.success("DONE! 🎉 The boilerplate parts of your report are ready! Don't forget to add context-specific interpretations at the end of each paragraph. 🙂")
     st.caption('Word (.docx) is an editable document with formatting. Plain text (.txt) contains the same report wording without formatting.')
     st.download_button('Download plain text (.txt)', result.text, 'Measure-report.txt', mime='text/plain')
     try:
