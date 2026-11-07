@@ -131,7 +131,7 @@ def score_step(test):
     st.caption('Download the template below or use your own. Make sure to use column names: ' + ', '.join(columns_for(test)) + '.')
     st.download_button('Download Excel score template (.xlsx)', excel_template(test), f'{test}-score-template.xlsx', mime=EXCEL_MIME)
     if test in DEFAULT_DEFINITIONS:
-        st.caption('For composites/indexes only, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable. These labels are supplied by you, not calculated by the app.')
+        st.caption('For composites/indexes only, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable.')
         if 'definitions' not in st.session_state:
             st.session_state.definitions = dict(DEFAULT_DEFINITIONS[test])
         with st.expander('Strength and weakness definitions (edit for this report)'):
@@ -222,25 +222,13 @@ def wording_step():
     st.caption('Upload a file above, or simply paste/type your report text in the box below. Uploaded text appears here after you click Load uploaded template. You can edit it here.')
     text = st.text_area('Report wording', key='editor_wording', value=st.session_state.wording, height=280,
         placeholder='Paste your report wording here, or upload a template above.',
-        help='Paste text directly from Word or another editor. Example: Word Reading was {{Word Reading.category}} (SS = {{Word Reading.score}}).')
+        help='Paste text directly from Word or another editor. Example: Word Reading was in the XX range (SS = XX, XX%ile).')
     st.session_state.wording = text
     original = st.session_state.template
     template = original if original.docx_bytes and text == original.original_text else Template(text)
     if original.docx_bytes and template is not original:
         st.caption('Edited Word text will export with standard formatting. Reload the original to retain its formatting.')
     st.caption('To report scores, end the sentence with (SS = XX, XX%ile). The app replaces that marker; mentions without a marker are left alone. For several measures in one sentence, name the result: (Mathematics: SS = XX, XX%ile). Strength/weakness explanations follow the score parentheses as separate sentences, with each code defined only on its first use.')
-    subject = st.text_input('Name for strength/weakness sentences', value=st.session_state.get('subject_name', 'XXX'), key='subject_editor')
-    st.session_state.subject_name = subject
-    with st.expander('Optional: choose exactly where results appear'):
-        st.write('A placeholder is a marker you put in your wording. The app replaces it with the matching value from your score table. Replace Mathematics in these examples with the measure you are reporting.')
-        st.markdown('**Category in the sentence**')
-        st.code('Mathematics was in the {{Mathematics.category}} range ({{Mathematics.score_summary}}).', language=None)
-        st.write('Example result: Mathematics was in the Average range (SS = 109, 73rd%ile).')
-        st.markdown('**Category inside the parentheses**')
-        st.code('Mathematics ({{Mathematics.summary}}).', language=None)
-        st.write('Example result: Mathematics (SS = 109, 73rd%ile, Average). Strength/weakness sentences belong after these parentheses; use the strengths marker below if you are placing values yourself.')
-        st.markdown('**Other values you can place yourself**')
-        st.write('Use {{Mathematics.strengths}} for the definitions of labels you entered, or {{Mathematics.percentile_report}} for a percentile written like 73rd%ile. Only request a value that you supplied or that has a configured category.')
     auto = st.checkbox('Fill blank score parentheses at sentence ends', value=st.session_state.auto)
     pr = st.checkbox('Include percentile ranks', value=st.session_state.pr)
     st.session_state.auto, st.session_state.pr = auto, pr
@@ -255,8 +243,7 @@ def review_step(test):
     template = original if original.docx_bytes and text == original.original_text else Template(text)
     options = dict(auto_insert=st.session_state.auto, include_percentile=st.session_state.pr,
                    include_ci=False, first_only=False, policy='rules', report_style='narrative',
-                   strength_definitions=st.session_state.get('definitions', {}), marker_only=True,
-                   subject_name=st.session_state.get('subject_name', 'XXX'))
+                   strength_definitions=st.session_state.get('definitions', {}), marker_only=True)
     st.subheader('4. Review and download')
     errors, notes = review(test, scores, st.session_state.rules, 'rules')
     if not scores:

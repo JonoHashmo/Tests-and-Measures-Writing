@@ -47,6 +47,20 @@ def percentile_report(value: str) -> str:
     return f'{sign}{digits}%ile'
 
 
+def parenthetical_spans(text):
+    """Yield complete outer parentheses, allowing any nested abbreviations."""
+    depth, start = 0, None
+    for index, char in enumerate(text):
+        if char == '(':
+            if depth == 0:
+                start = index
+            depth += 1
+        elif char == ')' and depth:
+            depth -= 1
+            if depth == 0:
+                yield start, index + 1
+
+
 def _name_pattern(name: str) -> str:
     # Dash/space differences in publisher exports should not require edits.
     chunks = re.split(r"([\s\-–—:]+)", name.strip())
@@ -60,9 +74,9 @@ class Renderer:
                  policy: str = "imported", auto_insert: bool = True,
                  include_percentile: bool = True, include_ci: bool = False,
                  first_only: bool = False, report_style: str = 'legacy', strength_definitions: dict | None = None,
-                 marker_only: bool = False, subject_name: str = 'XXX'):
+                 marker_only: bool = False, subject_name: str = ''):
         self.marker_only = marker_only
-        self.subject_name = subject_name.strip() or 'XXX'
+        self.subject_name = subject_name.strip()
         self.defined_strengths = set()
         from .strengths import DEFAULT_DEFINITIONS, strength_text
         self.strength_definitions = dict(DEFAULT_DEFINITIONS.get(test, {}) if strength_definitions is None else strength_definitions)
@@ -115,31 +129,34 @@ class Renderer:
         for code in parse_strengths(row.strengths):
             label = self.strength_definitions[code].strip().rstrip(',. ')
             if code in self.defined_strengths:
-                parts.append(f'This was also a {code} for {self.subject_name}.')
+                subject = f' for {self.subject_name}' if self.subject_name else ''
+                parts.append(f'a {code}{subject}')
             else:
-                parts.append(f'This was also a {label}.')
+                parts.append(f'a {label}')
                 self.defined_strengths.add(code)
-        return ' '.join(parts)
+        if not parts:
+            return ''
+        joined = parts[0] if len(parts) == 1 else ', '.join(parts[:-1]) + ', and ' + parts[-1]
+        return f'This was also {joined}.'
 
     def marker_edits(self, text, result, token_ranges):
-        # Parentheses may contain the nested abbreviation in Standard Score (SS).
-        parentheses = re.compile(r'\((?:[^()\n]|\(SS\))*\)', re.I)
         blank_score = re.compile(r'\b(?:SS|T|Scaled score|Standard Score(?:\s*\(SS\))?)\s*=\s*(?:X+S?|_+|\?+)(?!\w)', re.I)
         all_names = [(name, item) for item in CATALOGS[self.test] for name in (item.name, *item.aliases)]
         all_names.sort(key=lambda pair: len(pair[0]), reverse=True)
-        for marker in parentheses.finditer(text):
-            if not blank_score.search(marker.group()):
+        for marker_start, marker_end in parenthetical_spans(text):
+            marker_text = text[marker_start:marker_end]
+            if not blank_score.search(marker_text):
                 continue
-            if any(start < marker.end() and end > marker.start() for start, end in token_ranges):
+            if any(start < marker_end and end > marker_start for start, end in token_ranges):
                 continue
             # A marker must be the last item in its sentence or paragraph.
-            if not re.match(r'\s*(?:[.!?]|\n|$)', text[marker.end():]):
+            if not re.match(r'\s*(?:[.!?]|\n|$)', text[marker_end:]):
                 result.errors.append('Move the blank score parentheses to the end of the sentence so the app can safely insert the result.')
                 continue
-            boundaries = list(re.finditer(r'[.!?](?:\s+|$)|\n', text[:marker.start()]))
+            boundaries = list(re.finditer(r'[.!?](?:\s+|$)|\n', text[:marker_start]))
             left = boundaries[-1].end() if boundaries else 0
-            sentence = text[left:marker.start()]
-            explicit = marker.group()[1:].split(':', 1)[0].strip() if ':' in marker.group() else ''
+            sentence = text[left:marker_start]
+            explicit = marker_text[1:].split(':', 1)[0].strip() if ':' in marker_text else ''
             known = lookup(self.test, explicit) if explicit else None
             if explicit and known is None:
                 result.errors.append(f'{explicit}: the name inside the score marker is not recognized. Use an accepted measure name or abbreviation.')
@@ -161,7 +178,7 @@ class Renderer:
             if row is None:
                 result.errors.append(f'{known.name}: this sentence requests scores, but none were supplied. Add its score or remove the blank score parentheses.')
                 continue
-            if self.include_percentile and re.search(r'%ile|percentile', marker.group(), re.I) and not row.percentile:
+            if self.include_percentile and re.search(r'%ile|percentile', marker_text, re.I) and not row.percentile:
                 result.errors.append(f'{row.name}: the score marker requests a percentile, but the table has none. Add it or remove the percentile from the marker.')
                 continue
             category = re.search(r'\bin the\s+([\w -]+?)\s+range\b', sentence, re.I)
@@ -173,10 +190,10 @@ class Renderer:
                 if not any(e.start < left + b and e.end > left + a for e in result.edits):
                     result.edits.append(Edit(left+a, left+b, self.category(row), row.name, 'Category in sentence'))
             prefix = f'{explicit}: ' if explicit else ''
-            category_token = any(left <= e.start < marker.start() and e.measure == row.name and
+            category_token = any(left <= e.start < marker_start and e.measure == row.name and
                                  e.reason == 'Placeholder: category' for e in result.edits)
             replacement = f'({prefix}{self.summary(row, include_category=not bool(category or category_token))})'
-            end = marker.end()
+            end = marker_end
             tail = text[end:]
             punctuation = re.match(r'[ \t]*([.!?])', tail)
             if row.strengths:
@@ -186,7 +203,7 @@ class Renderer:
                 else:
                     replacement += '.'
                 replacement += f' \x00strengths:{row.name}\x00'
-            result.edits.append(Edit(marker.start(), end, replacement, row.name, 'Score marker'))
+            result.edits.append(Edit(marker_start, end, replacement, row.name, 'Score marker'))
 
     def field(self, row: Score, attr: str) -> str:
         if attr == "summary":
