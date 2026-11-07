@@ -1,0 +1,58 @@
+"""Excel templates and explicit, non-destructive upload validation."""
+from io import BytesIO
+from pathlib import Path
+from tempfile import TemporaryDirectory
+
+from openpyxl import Workbook
+from openpyxl.styles import Font, PatternFill
+from openpyxl.worksheet.datavalidation import DataValidation
+
+from measure.catalog import CATALOGS
+from measure.importers import read_tables
+from measure.web_profiles import COLUMNS
+
+EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+
+def excel_template(test):
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'Scores'
+    sheet.append(COLUMNS)
+    for measure in CATALOGS[test]:
+        sheet.append([measure.name, None, None])
+    sheet.freeze_panes = 'A2'
+    sheet.auto_filter.ref = sheet.dimensions
+    sheet.column_dimensions['A'].width = 42
+    sheet.column_dimensions['B'].width = 15
+    sheet.column_dimensions['C'].width = 18
+    for cell in sheet[1]:
+        cell.font = Font(bold=True, color='FFFFFF')
+        cell.fill = PatternFill('solid', fgColor='245F58')
+    validation = DataValidation(type='whole', operator='between', formula1=0, formula2=250, allow_blank=True)
+    validation.errorTitle = 'Enter a numeric score'
+    validation.error = 'Use a whole standardized score; leave unused rows blank.'
+    validation.showErrorMessage = True
+    sheet.add_data_validation(validation)
+    validation.add('B2:B1000')
+    output = BytesIO()
+    workbook.save(output)
+    return output.getvalue()
+
+
+def read_score_upload(upload):
+    suffix = Path(upload.name).suffix.lower()
+    if suffix == '.numbers':
+        raise ValueError('Apple Numbers files cannot be imported directly. In Numbers, choose File → Export To → Excel, then upload the exported .xlsx file. Do not rename the file extension.')
+    if suffix not in ('.xlsx', '.csv'):
+        raise ValueError('Unsupported file type. Upload an Excel (.xlsx) workbook or CSV (.csv). In Numbers, choose File → Export To → Excel first.')
+    try:
+        with TemporaryDirectory(prefix='measure-scores-') as directory:
+            path = Path(directory) / ('scores' + suffix)
+            path.write_bytes(upload.getvalue())
+            tables = read_tables(path)
+        if not tables or not any(table.rows for table in tables):
+            raise ValueError('The file contains no readable score tables.')
+        return tables
+    except Exception as exc:
+        raise ValueError('Cannot read this file. It may be damaged, password-protected, or saved in another format. Export a fresh Excel (.xlsx) workbook or CSV; changing the extension does not convert it.') from exc

@@ -29,10 +29,13 @@ Open `http://localhost:8501` in Chrome if the browser does not open automaticall
 
 ## Workflow
 
-1. Select an assessment and download its CSV score template. The headers must be exactly `name,score,percentile`, in that order, with no extra columns. Fill scores and delete unused measure rows. Percentile can be blank; do not enter raw scores. CSV and Excel (.xlsx) are supported. The app determines score types from recognized names and rejects unknown names.
-2. Import the completed table. Review or edit its three columns. Accepted full names and abbreviations are listed beside the template download.
-3. Upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste it. The Report wording box shows the uploaded text and permits edits. Use automatic name matching or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`.
-4. Review the completed report. Word (.docx) is an editable document with formatting; plain text (.txt) contains the same wording without formatting. Unedited Word templates retain supported formatting; editing their text creates a fresh Word document. The editor displays text, not a visual facsimile of Word pages.
+1. Start by selecting an assessment and clicking **Continue**. Only test selection appears on the opening screen. The left sidebar shows the current step, **Back a step**, and **Clear session**.
+2. Download the selected assessment's **Excel (.xlsx) score template**. Its measure names and the accepted-name reference list belong only to that assessment. The headers must be exactly `name,score,percentile`, in that order, with no extra columns. Fill scores and delete unused measure rows. Percentile can be blank; do not enter raw scores. CSV and Excel (.xlsx) are supported. The app determines score types from recognized names and rejects unknown names.
+3. Import the completed table, or open **Or paste a score table**, paste copied Excel/Numbers cells including the three headers, and click **Import pasted table**. Pasted CSV text is also accepted. Invalid pasted tables leave current scores unchanged. Review or edit its three columns. Accepted full names and abbreviations are listed beside the template download.
+4. Click **Continue to wording**, then upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste/type your text directly into **Report wording** without uploading anything. Pasting uses plain text and standard export formatting. The Report wording box shows the uploaded text and permits edits. Use automatic name matching or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`.
+5. Click **Continue to review** and review the completed report. Word (.docx) is an editable document with formatting; plain text (.txt) contains the same wording without formatting. Unedited Word templates retain supported formatting; editing their text creates a fresh Word document. The editor displays text, not a visual facsimile of Word pages.
+
+Apple Numbers `.numbers` files are not imported directly. Open the workbook in Numbers and use **File → Export To → Excel**, then upload the exported `.xlsx` file. Renaming `.numbers` to `.xlsx` does not convert it. Unsupported, unreadable, or damaged files display an error without replacing current scores. CSV remains supported for imports. Uploaded files are read without modifying the original workbook.
 
 ### Owner-maintained categories and abbreviations
 
