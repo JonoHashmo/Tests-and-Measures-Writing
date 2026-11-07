@@ -13,9 +13,10 @@ from measure.catalog import TESTS, reference_sections
 from measure.documents import Template, load_template, render_docx
 from measure.engine import Renderer, missing_mentions, review
 from measure.importers import Table, read_tables, parse_delimited
-from measure.web_profiles import COLUMNS, fixed_scores, profile_for
+from measure.web_profiles import COLUMNS, fixed_scores, profile_for, columns_for
 from measure.web_spreadsheets import EXCEL_MIME, excel_template, read_score_upload
 from measure.rules import category_for
+from measure.strengths import DEFAULT_DEFINITIONS, CODES, strength_text
 
 EXAMPLES = Path(__file__).resolve().parents[1] / 'examples'
 
@@ -28,16 +29,18 @@ def uploaded_file(upload, reader):
         return reader(path)
 
 
-def score_frame(scores):
-    frame = pd.DataFrame([{key: score.to_dict()[key] for key in COLUMNS} for score in scores], columns=COLUMNS)
+def score_frame(scores, test):
+    columns = columns_for(test)
+    frame = pd.DataFrame([{key: score.to_dict()[key] for key in columns} for score in scores], columns=columns)
     frame['score'] = pd.to_numeric(frame['score'], errors='coerce').astype(float)
     return frame
 
 
 def scores_from_frame(frame, test):
-    rows = [COLUMNS]
+    columns = columns_for(test)
+    rows = [columns]
     for row in frame.to_dict('records'):
-        values = ['' if pd.isna(row[k]) else str(row[k]) for k in COLUMNS]
+        values = ['' if pd.isna(row[k]) else str(row[k]) for k in columns]
         if any(values):
             rows.append(values)
     if len(rows) == 1:
@@ -112,6 +115,7 @@ def main():
     profile = profile_for(test)
     st.session_state.rules = profile['rules']
     st.title(test)
+    st.caption('No AI or assessment calculations. Measure inserts your supplied results and matches them to predefined descriptions.')
     st.caption("Don't forget to download your report at the end!")
     if step == 1:
         if st.button('Try fictional example'):
@@ -125,8 +129,17 @@ def main():
 
 def score_step(test):
     st.subheader('2. Import and review scores')
-    st.caption('Use exactly three columns: name, score, percentile. Fill in the template and delete unused measure rows. Name and score are required; percentile may be blank.')
+    st.caption('Use the template columns: name, score, percentile, plus strengths for WIAT/WAIS. Enter only the measures you want to report. Leave unused score and percentile cells blank, or delete those rows. Percentile is optional.')
     st.download_button('Download Excel score template (.xlsx)', excel_template(test), f'{test}-score-template.xlsx', mime=EXCEL_MIME)
+    if test in DEFAULT_DEFINITIONS:
+        st.caption('For composites/indexes only, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable. These labels are supplied by you, not calculated by the app.')
+        if 'definitions' not in st.session_state:
+            st.session_state.definitions = dict(DEFAULT_DEFINITIONS[test])
+        with st.expander('Strength and weakness definitions (edit for this report)'):
+            st.caption('Edit names and pronouns to fit your report. Changes apply to this session and selected test.')
+            for code in CODES:
+                value = st.text_area(code, value=st.session_state.definitions[code], key=f'definition_{code}')
+                st.session_state.definitions[code] = value
     with st.expander('Accepted names' if test == 'WIAT-4' else 'Accepted names and abbreviations'):
         for title, measures in reference_sections(test):
             st.markdown(f'**{title}**')
@@ -152,7 +165,7 @@ def score_step(test):
         except Exception as exc:
             st.error(f'Cannot import table: {exc}')
     with st.expander('Or paste a score table'):
-        st.caption('Copy the three columns, including name, score, percentile headers, from Excel or Numbers and paste below. CSV text also works.')
+        st.caption('Copy your table, including its name, score, percentile and optional strengths headers, from Excel or Numbers and paste below. CSV text also works.')
         pasted = st.text_area('Paste score table', height=180,
             placeholder='name\tscore\tpercentile\nWord Reading\t92\t30', key='pasted_scores')
         if st.button('Import pasted table (replaces current scores)', disabled=not pasted.strip()):
@@ -165,7 +178,7 @@ def score_step(test):
                 st.success(f'Imported {len(rows)} scores from pasted table.')
             except ValueError as exc:
                 st.error(f'Cannot import pasted table: {exc}')
-    edited = st.data_editor(score_frame(st.session_state.scores), num_rows='dynamic', hide_index=True,
+    edited = st.data_editor(score_frame(st.session_state.scores, test), num_rows='dynamic', hide_index=True,
         key=f'scores_{st.session_state.revision}')
     try:
         scores = scores_from_frame(edited, test)
@@ -174,6 +187,13 @@ def score_step(test):
         scores, score_errors = [], [str(exc)]
     for error in score_errors:
         st.error(error)
+    if test in DEFAULT_DEFINITIONS:
+        for row in scores:
+            try:
+                strength_text(row.strengths, st.session_state.definitions)
+            except ValueError as exc:
+                score_errors.append(str(exc))
+                st.error(str(exc))
     st.session_state.current_scores = scores
     if st.button('Continue to wording', disabled=bool(score_errors) or not scores):
         st.session_state.scores = scores
@@ -202,6 +222,7 @@ def wording_step():
     template = original if original.docx_bytes and text == original.original_text else Template(text)
     if original.docx_bytes and template is not original:
         st.caption('Edited Word text will export with standard formatting. Reload the original to retain its formatting.')
+    st.caption('For a category in your sentence: Mathematics was in the {{Mathematics.category}} range ({{Mathematics.score_summary}}). Use {{Mathematics.strengths}} for the entered strength/weakness definitions at an exact location. For everything in parentheses: Mathematics ({{Mathematics.summary}}). Use {{Mathematics.percentile_report}} for a rank such as 73rd%ile.')
     auto = st.checkbox('Insert scores after matching measure names', value=st.session_state.auto)
     pr = st.checkbox('Include percentile ranks', value=st.session_state.pr)
     st.session_state.auto, st.session_state.pr = auto, pr
@@ -215,7 +236,8 @@ def review_step(test):
     original = st.session_state.template
     template = original if original.docx_bytes and text == original.original_text else Template(text)
     options = dict(auto_insert=st.session_state.auto, include_percentile=st.session_state.pr,
-                   include_ci=False, first_only=False, policy='rules')
+                   include_ci=False, first_only=False, policy='rules', report_style='narrative',
+                   strength_definitions=st.session_state.get('definitions', {}))
     st.subheader('4. Review and download')
     errors, notes = review(test, scores, st.session_state.rules, 'rules')
     if not scores:

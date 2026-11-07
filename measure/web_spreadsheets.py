@@ -9,7 +9,7 @@ from openpyxl.worksheet.datavalidation import DataValidation
 
 from measure.catalog import CATALOGS
 from measure.importers import read_tables
-from measure.web_profiles import COLUMNS
+from measure.web_profiles import columns_for
 
 EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
@@ -18,14 +18,15 @@ def excel_template(test):
     workbook = Workbook()
     sheet = workbook.active
     sheet.title = 'Scores'
-    sheet.append(COLUMNS)
+    sheet.append(columns_for(test))
     for measure in CATALOGS[test]:
-        sheet.append([measure.name, None, None])
+        sheet.append([measure.name] + [None] * (len(columns_for(test)) - 1))
     sheet.freeze_panes = 'A2'
     sheet.auto_filter.ref = sheet.dimensions
     sheet.column_dimensions['A'].width = 42
     sheet.column_dimensions['B'].width = 15
     sheet.column_dimensions['C'].width = 18
+    sheet.column_dimensions['D'].width = 24
     for cell in sheet[1]:
         cell.font = Font(bold=True, color='FFFFFF')
         cell.fill = PatternFill('solid', fgColor='245F58')

@@ -27,8 +27,24 @@ class RenderResult:
 
 
 TOKEN = re.compile(r"\{\{\s*(.+?)\s*\}\}", re.DOTALL)
-ATTRIBUTES = {"score", "percentile", "ci", "category", "name", "summary", "age_eq", "grade_eq", "raw_score", "score_type"}
+ATTRIBUTES = {"score", "percentile", "percentile_report", "score_summary", "strengths", "ci", "category", "name", "summary", "age_eq", "grade_eq", "raw_score", "score_type"}
 LABELS = {"standard": "SS", "scaled": "Scaled score", "t": "T"}
+
+
+def percentile_report(value: str) -> str:
+    """Ordinal ranks; decimals retain their value without an invented suffix."""
+    if not value:
+        return ''
+    match = re.fullmatch(r'\s*([<>≤≥]?)\s*(\d+(?:\.\d+)?)\s*%?\s*', value)
+    if not match:
+        return ''
+    sign, digits = match.groups()
+    rank = float(digits)
+    if rank.is_integer():
+        n = int(rank)
+        suffix = 'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')
+        return f'{sign}{n}{suffix}%ile'
+    return f'{sign}{digits}%ile'
 
 
 def _name_pattern(name: str) -> str:
@@ -43,13 +59,22 @@ class Renderer:
     def __init__(self, test: str, scores: list[Score], rules: dict,
                  policy: str = "imported", auto_insert: bool = True,
                  include_percentile: bool = True, include_ci: bool = False,
-                 first_only: bool = False):
+                 first_only: bool = False, report_style: str = 'legacy', strength_definitions: dict | None = None):
+        from .strengths import DEFAULT_DEFINITIONS, strength_text
+        self.strength_definitions = dict(DEFAULT_DEFINITIONS.get(test, {}) if strength_definitions is None else strength_definitions)
+        self.report_style = report_style
         self.test, self.scores, self.rules = test, scores, rules
         self.policy, self.auto_insert = policy, auto_insert
         self.include_percentile, self.include_ci, self.first_only = include_percentile, include_ci, first_only
         self.aliases: dict[str, Score] = {}
         self.names: list[str] = []
         self.errors = validate_scores(scores) + validate_rules(rules, test)
+        for row in scores:
+            if row.strengths:
+                try:
+                    strength_text(row.strengths, self.strength_definitions)
+                except ValueError as exc:
+                    self.errors.append(f'{row.name}: {exc}')
         for row in scores:
             known = lookup(test, row.name)
             names = [row.name, *row.aliases]
@@ -70,19 +95,29 @@ class Renderer:
     def category(self, row: Score) -> str:
         return category_for(row, self.rules, self.policy, self.test)[0]
 
-    def summary(self, row: Score) -> str:
+    def summary(self, row: Score, include_category: bool = True, include_strengths: bool = True) -> str:
         bits = [f"{LABELS[row.score_type]} = {number(row.score)}"]
         if self.include_percentile and row.percentile:
-            bits.append(f"PR = {row.percentile}")
+            bits.append(percentile_report(row.percentile) if self.report_style == 'narrative' else f"PR = {row.percentile}")
         if self.include_ci and row.ci:
             bits.append(f"CI = {row.ci}")
-        if self.category(row):
+        if include_category and self.category(row):
             bits.append(self.category(row))
-        return "; ".join(bits)
+        if include_strengths and row.strengths:
+            from .strengths import strength_text
+            bits.append(strength_text(row.strengths, self.strength_definitions))
+        return (", " if self.report_style == 'narrative' else "; ").join(bits)
 
     def field(self, row: Score, attr: str) -> str:
         if attr == "summary":
             return self.summary(row)
+        if attr == "score_summary":
+            return self.summary(row, include_category=False, include_strengths=False)
+        if attr == "strengths":
+            from .strengths import strength_text
+            return strength_text(row.strengths, self.strength_definitions)
+        if attr == "percentile_report":
+            return percentile_report(row.percentile)
         if attr == "category":
             return self.category(row)
         if attr == "score":
@@ -122,6 +157,7 @@ class Renderer:
         if "{{" in uncovered or "}}" in uncovered:
             result.errors.append("A placeholder has unmatched braces. Use {{Measure.field}}.")
         if self.auto_insert and self.pattern:
+            annotated_sentences = set()
             for match in self.pattern.finditer(text):
                 if any(start <= match.start() < end for start, end in token_ranges):
                     continue
@@ -132,9 +168,36 @@ class Renderer:
                 left = max(text.rfind("\n", 0, match.start()), text.rfind(". ", 0, match.start())) + 1
                 candidates = [x for x in (text.find("\n", match.end()), text.find(". ", match.end())) if x >= 0]
                 right = min(candidates, default=len(text))
+                if (left, right) in annotated_sentences:
+                    continue
                 explicit_here = any(left <= edit.start < right and edit.measure == row.name for edit in result.edits if edit.reason.startswith("Placeholder"))
                 if explicit_here:
                     continue
+                key = normalize(row.name)
+                if self.first_only and key in self.used:
+                    continue
+                if self.report_style == 'narrative':
+                    sentence = text[left:right]
+                    # Only move a score to a sentence end when its measure is unambiguous.
+                    mentions = {normalize(self.aliases[normalize(m.group())].name)
+                                for m in self.pattern.finditer(sentence)}
+                    if len(mentions) == 1:
+                        category = re.search(r'\bin the\s+([\w -]+?)\s+range\b', sentence, re.I)
+                        if category and self.category(row):
+                            if re.search(r'\b(?:SS|T|Scaled score)\s*=\s*\d', sentence, re.I):
+                                result.warnings.append(f'{row.name}: existing score annotation retained; verify it against the table.')
+                                continue
+                            start, end = category.span(1)
+                            result.edits.append(Edit(left + start, left + end, self.category(row), row.name, 'Category in sentence'))
+                            insertion = right
+                            while insertion > left and text[insertion - 1].isspace():
+                                insertion -= 1
+                            if insertion > left and text[insertion - 1] in '.!?':
+                                insertion -= 1
+                            result.edits.append(Edit(insertion, insertion, f' ({self.summary(row, include_category=False)})', row.name, 'Name match'))
+                            annotated_sentences.add((left, right))
+                            self.used.add(key)
+                            continue
                 tail = text[match.end():match.end() + 140]
                 if re.match(r"\s*\((?:SS|T|PR|CI|Scaled score|standard score)\s*(?:=|:)" , tail, re.I):
                     result.warnings.append(f"{row.name}: existing score annotation retained; verify it against the table.")

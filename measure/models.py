@@ -20,6 +20,7 @@ class Score:
     grade_eq: str = ""
     raw_score: str = ""
     source: str = "Manual entry"
+    strengths: str = ""
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -33,6 +34,11 @@ class Score:
 
     def validate(self) -> list[str]:
         problems = []
+        from .strengths import parse_strengths
+        try:
+            parse_strengths(self.strengths)
+        except ValueError as exc:
+            problems.append(f'{self.name}: {exc}')
         for attr in ("name", "score_type", "percentile", "ci", "category", "age_eq", "grade_eq", "raw_score", "source"):
             if not isinstance(getattr(self, attr), str):
                 problems.append(f"Score field {attr} must be text.")
