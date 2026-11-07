@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 
-from measure.catalog import MeasureName, CATALOGS, lookup, normalize
+from measure.catalog import lookup
 from measure.importers import ImportProblem, Table, scores_from_table
 from measure.rules import validate_rules
 
@@ -14,14 +14,6 @@ def profile_for(test):
     errors = validate_rules(profile['rules'], test)
     if errors:
         raise ValueError('\n'.join(errors))
-    # Owner aliases extend the catalog consistently for import and report matching.
-    for name, aliases in profile['aliases'].items():
-        known = lookup(test, name)
-        if known is None:
-            raise ValueError(f'Unknown configured measure: {name}')
-        catalog = CATALOGS[test]
-        index = catalog.index(known)
-        catalog[index] = MeasureName(known.name, known.kind, tuple(dict.fromkeys((*known.aliases, *aliases))))
     return profile
 
 

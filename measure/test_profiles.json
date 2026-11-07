@@ -1,7 +1,6 @@
 {
   "WIAT-4": {
     "status": "Owner-defined standard-score categories. Scores outside 40\u2013160 have no configured category.",
-    "aliases": {},
     "rules": {
       "standard": [
         {
@@ -47,7 +46,6 @@
   },
   "WAIS-5": {
     "status": "Owner-defined standard-score categories. Scaled-score categories pending.",
-    "aliases": {},
     "rules": {
       "standard": [
         {
@@ -93,7 +91,6 @@
   },
   "PAI": {
     "status": "PAI scale-specific categories pending.",
-    "aliases": {},
     "rules": {
       "standard": [],
       "scaled": [],

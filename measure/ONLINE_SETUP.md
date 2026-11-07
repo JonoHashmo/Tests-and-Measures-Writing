@@ -39,9 +39,9 @@ Apple Numbers `.numbers` files are not imported directly. Open the workbook in N
 
 ### Owner-maintained categories and abbreviations
 
-`measure/test_profiles.json` defines each assessment's rules and additional aliases. End users do not configure ranges. WIAT and WAIS standard-score categories use the owner's supplied definitions. WIAT categories cover 40–160 only. WAIS categories include 130 and above and 69 and below within the supported score range. WAIS subtest scaled-score categories and PAI scale-specific categories remain unconfigured pending owner definitions. The app displays this status. Only configured rules determine categories, and no categories are accepted from score uploads.
+`measure/test_profiles.json` defines each assessment's category rules. Fixed names and abbreviations live in `measure/catalog.py` and are identical for every user. WAIS subtests follow the supplied order; indexes appear separately. WIAT displays names only. PAI subscales follow their parent scales in both the reference tables and Excel template. End users do not configure ranges. WIAT and WAIS standard-score categories use the owner's supplied definitions. WIAT categories cover 40–160 only. WAIS categories include 130 and above and 69 and below within the supported score range. WAIS subtest scaled-score categories and PAI scale-specific categories remain unconfigured pending owner definitions. The app displays this status. Only configured rules determine categories, and no categories are accepted from score uploads.
 
-For each test, replace `rules.standard` / `rules.scaled` with inclusive `min`, `max`, `label` bands as appropriate. PAI must use `rules.overrides` keyed by scale name or code. `aliases` maps a recognized canonical measure name to a list of additional matching names. Update `status` after supplying the final definitions. Keep this file in GitHub alongside the Python files.
+For each test, replace `rules.standard` / `rules.scaled` with inclusive `min`, `max`, `label` bands as appropriate. PAI must use `rules.overrides` keyed by scale name or code. Update `status` after supplying the final definitions. Keep this file in GitHub alongside the Python files.
 
 ## Data handling
 

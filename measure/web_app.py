@@ -9,12 +9,13 @@ from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import streamlit as st
-from measure.catalog import TESTS, CATALOGS
+from measure.catalog import TESTS, reference_sections
 from measure.documents import Template, load_template, render_docx
 from measure.engine import Renderer, missing_mentions, review
 from measure.importers import Table, read_tables, parse_delimited
 from measure.web_profiles import COLUMNS, fixed_scores, profile_for
 from measure.web_spreadsheets import EXCEL_MIME, excel_template, read_score_upload
+from measure.rules import category_for
 
 EXAMPLES = Path(__file__).resolve().parents[1] / 'examples'
 
@@ -125,10 +126,13 @@ def main():
 def score_step(test):
     st.subheader('2. Import and review scores')
     st.caption('Use exactly three columns: name, score, percentile. Fill in the template and delete unused measure rows. Name and score are required; percentile may be blank.')
-    reference = pd.DataFrame([{'name': m.name, 'abbreviations / matching names': '; '.join(m.aliases)} for m in CATALOGS[test]])
     st.download_button('Download Excel score template (.xlsx)', excel_template(test), f'{test}-score-template.xlsx', mime=EXCEL_MIME)
-    with st.expander('Accepted names and abbreviations'):
-        st.dataframe(reference, hide_index=True)
+    with st.expander('Accepted names' if test == 'WIAT-4' else 'Accepted names and abbreviations'):
+        for title, measures in reference_sections(test):
+            st.markdown(f'**{title}**')
+            rows = [{'Name': m.name} if test == 'WIAT-4' else
+                    {'Name': m.name, 'Abbreviation': m.aliases[0]} for m in measures]
+            st.dataframe(pd.DataFrame(rows), hide_index=True)
     upload = st.file_uploader('Score table', help='Excel (.xlsx) or CSV. Numbers files must first be exported to Excel.')
     if upload:
         try:
@@ -221,7 +225,17 @@ def review_step(test):
     for error in errors:
         st.error(error)
     for note in notes:
-        st.warning(note)
+        if not note.endswith(': no category; enter a label or add a cutoff rule.'):
+            st.warning(note)
+    missing_categories = [row.name for row in scores
+        if not errors and not category_for(row, st.session_state.rules, 'rules', test)[0]]
+    if missing_categories:
+        st.info('Descriptive labels are unavailable for: ' + ', '.join(missing_categories) +
+            '. The app has not been set up with score ranges for these measures or scores. '
+            'This does not mean your scores are incorrect. Their scores can still be inserted, '
+            'but labels such as “Average” will not be added automatically. '
+            'You can download the report if it does not explicitly request these missing labels; '
+            'review and add the appropriate descriptions in Word if needed.')
     if errors:
         return
     renderer = lambda: Renderer(test, scores, st.session_state.rules, **options)
@@ -229,9 +243,11 @@ def review_step(test):
     for note in result.warnings:
         st.warning(note)
     for name in missing_mentions(test, text, scores):
-        st.warning(f'{name}: mentioned in the template but has no imported score.')
+        st.warning(f'Your report mentions {name}, but your score table does not include a score for it. '
+            'Go back to Score table to add it, or remove that mention from Report wording. '
+            'The app will leave that mention unchanged until you provide a score.')
     for error in result.errors:
-        st.error(error)
+        st.error(report_error(error))
     st.text_area('Report preview', value=result.text, height=300, disabled=True)
     if result.errors:
         return
@@ -242,7 +258,7 @@ def review_step(test):
         word, word_result = render_docx(template, renderer())
         if word_result.errors:
             for error in word_result.errors:
-                st.error(error)
+                st.error(report_error(error))
         else:
             for warning in word_result.warnings:
                 st.warning(warning)
@@ -250,6 +266,18 @@ def review_step(test):
                 mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as exc:
         st.error(f'Word export unavailable: {exc}')
+
+
+def report_error(message):
+    suffix = ': category is missing; fill it in or remove that placeholder.'
+    if message.endswith(suffix):
+        name = message[:-len(suffix)]
+        return (f'Your wording asks for a descriptive label for {name}, such as “Average”, '
+                'but the app has no label available for this score. '
+                f'Go back to Report wording and remove {{{{{name}.category}}}} '
+                '(or the equivalent abbreviation placeholder), and adjust the sentence to use the score instead. '
+                'Downloads are paused until this request for a missing label is removed or the app owner configures the needed score ranges.')
+    return message
 
 
 if __name__ == '__main__':
