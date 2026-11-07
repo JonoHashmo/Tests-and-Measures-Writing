@@ -1,7 +1,7 @@
-Composite/Subtest,Score,Score type,Percentile rank,95% Confidence interval,Descriptive category
-Total Achievement,96,standard,39,91–101,Average
-Reading,92,standard,30,87–97,Average
-Written Expression,84,standard,14,78–90,Low average
-Mathematics,109,standard,73,103–115,Average
-Word Reading,92,standard,30,87–97,Average
-Reading Comprehension,95,standard,37,88–102,Average
+name,score,percentile
+Total Achievement,96,39
+Reading,92,30
+Written Expression,84,14
+Mathematics,109,73
+Word Reading,92,30
+Reading Comprehension,95,37

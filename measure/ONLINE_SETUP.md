@@ -29,11 +29,16 @@ Open `http://localhost:8501` in Chrome if the browser does not open automaticall
 
 ## Workflow
 
-Select an assessment, upload a table, select a sheet/table and header row, and map the columns. Import replaces the current score table. Edit cells or add rows in the score editor; use `standard`, `scaled`, or `t` for the score type. Separate additional aliases with semicolons.
+1. Select an assessment and download its CSV score template. The headers must be exactly `name,score,percentile`, in that order, with no extra columns. Fill scores and delete unused measure rows. Percentile can be blank; do not enter raw scores. CSV and Excel (.xlsx) are supported. The app determines score types from recognized names and rejects unknown names.
+2. Import the completed table. Review or edit its three columns. Accepted full names and abbreviations are listed beside the template download.
+3. Upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste it. The Report wording box shows the uploaded text and permits edits. Use automatic name matching or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`.
+4. Review the completed report. Word (.docx) is an editable document with formatting; plain text (.txt) contains the same wording without formatting. Unedited Word templates retain supported formatting; editing their text creates a fresh Word document. The editor displays text, not a visual facsimile of Word pages.
 
-Under descriptive ranges, edit the inclusive minimum, maximum, and label. Click **Apply cutoff ranges**. Enter a measure name or code to define an override; PAI requires named scale rules. Imported labels take precedence unless you select **Cutoff rules only**.
+### Owner-maintained categories and abbreviations
 
-Upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste text. Use automatic name matching or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`. Review and download Word or text. Unedited Word templates retain supported formatting; editing their text creates a fresh Word document.
+`measure/test_profiles.json` defines each assessment's rules and additional aliases. End users do not configure ranges. WIAT and WAIS standard-score categories use the owner's supplied definitions. WIAT categories cover 40–160 only. WAIS categories include 130 and above and 69 and below within the supported score range. WAIS subtest scaled-score categories and PAI scale-specific categories remain unconfigured pending owner definitions. The app displays this status. Only configured rules determine categories, and no categories are accepted from score uploads.
+
+For each test, replace `rules.standard` / `rules.scaled` with inclusive `min`, `max`, `label` bands as appropriate. PAI must use `rules.overrides` keyed by scale name or code. `aliases` maps a recognized canonical measure name to a list of additional matching names. Update `status` after supplying the final definitions. Keep this file in GitHub alongside the Python files.
 
 ## Data handling
 

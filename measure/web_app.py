@@ -1,8 +1,6 @@
 """Chrome-compatible Streamlit entry point; no Tk or shared case storage."""
 from __future__ import annotations
 
-from copy import deepcopy
-import io
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -11,15 +9,13 @@ from tempfile import TemporaryDirectory
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import streamlit as st
-from measure.catalog import TESTS
+from measure.catalog import TESTS, CATALOGS
 from measure.documents import Template, load_template, render_docx
 from measure.engine import Renderer, missing_mentions, review
-from measure.importers import FIELDS, guess_header, header_mapping, read_tables, scores_from_table
-from measure.models import Score
-from measure.rules import defaults, validate_rules
+from measure.importers import Table, read_tables
+from measure.web_profiles import COLUMNS, fixed_scores, profile_for
 
 EXAMPLES = Path(__file__).resolve().parents[1] / 'examples'
-COLUMNS = ['name', 'score', 'score_type', 'percentile', 'ci', 'category', 'aliases', 'age_eq', 'grade_eq', 'raw_score']
 
 
 def uploaded_file(upload, reader):
@@ -31,27 +27,20 @@ def uploaded_file(upload, reader):
 
 
 def score_frame(scores):
-    records = []
-    for score in scores:
-        row = score.to_dict()
-        row['aliases'] = '; '.join(score.aliases)
-        records.append({key: row[key] for key in COLUMNS})
-    frame = pd.DataFrame(records, columns=COLUMNS)
+    frame = pd.DataFrame([{key: score.to_dict()[key] for key in COLUMNS} for score in scores], columns=COLUMNS)
     frame['score'] = pd.to_numeric(frame['score'], errors='coerce').astype(float)
     return frame
 
 
-def scores_from_frame(frame):
-    result = []
+def scores_from_frame(frame, test):
+    rows = [COLUMNS]
     for row in frame.to_dict('records'):
-        row = {k: (None if pd.isna(v) else v) for k, v in row.items()}
-        if not any(v is not None and str(v).strip() for v in row.values()):
-            continue
-        score = row.pop('score')
-        aliases = row.pop('aliases') or ''
-        row = {key: str(value) if value is not None else '' for key, value in row.items()}
-        result.append(Score(**row, score=score, aliases=[a.strip() for a in aliases.split(';') if a.strip()]))
-    return result
+        values = ['' if pd.isna(row[k]) else str(row[k]) for k in COLUMNS]
+        if any(values):
+            rows.append(values)
+    if len(rows) == 1:
+        return []
+    return fixed_scores(Table('Score editor', rows), test)[0]
 
 
 def reset_workspace():
@@ -70,9 +59,11 @@ def main():
     if st.sidebar.button('Clear session'):
         reset_workspace()
         st.rerun()
+    profile = profile_for(test)
+    st.session_state.rules = profile['rules']
+    st.sidebar.caption(profile['status'])
     if 'scores' not in st.session_state:
         st.session_state.scores = []
-        st.session_state.rules = defaults(test)
         st.session_state.template = Template('')
         st.session_state.wording = ''
         st.session_state.revision = 0
@@ -81,7 +72,7 @@ def main():
         if test == 'WAIS-IV':
             st.sidebar.caption('This workflow example uses shared WAIS measure names, not edition-specific norms.')
         table = read_tables(EXAMPLES / f'{stem}_scores.csv')[0]
-        st.session_state.scores, _ = scores_from_table(table, header_mapping(table.rows[0]), test)
+        st.session_state.scores, _ = fixed_scores(table, test)
         template = load_template(EXAMPLES / f'{stem}_template.txt')
         st.session_state.template = template
         st.session_state.wording = template.text
@@ -89,28 +80,23 @@ def main():
     st.sidebar.caption('Already-scored results only. No raw-score conversion or clinical interpretation.')
 
     st.subheader('1. Import and review scores')
-    upload = st.file_uploader('Score table', type=['csv', 'tsv', 'xlsx', 'docx', 'pdf', 'txt'])
+    st.caption('Use exactly three columns: name, score, percentile. Fill in the template and delete unused measure rows. Name and score are required; percentile may be blank.')
+    reference = pd.DataFrame([{'name': m.name, 'abbreviations / matching names': '; '.join(m.aliases)} for m in CATALOGS[test]])
+    blank = pd.DataFrame({'name': [m.name for m in CATALOGS[test]], 'score': [''] * len(CATALOGS[test]), 'percentile': [''] * len(CATALOGS[test])})
+    st.download_button('Download score table template (.csv)', blank.to_csv(index=False), f'{test}-score-template.csv', mime='text/csv')
+    with st.expander('Accepted names and abbreviations'):
+        st.dataframe(reference, hide_index=True)
+    upload = st.file_uploader('Score table', type=['csv', 'xlsx'])
     if upload:
         try:
             tables = uploaded_file(upload, read_tables)
             if not tables:
-                raise ValueError('No readable tables found. Try CSV or Excel instead.')
+                raise ValueError('No readable tables found.')
             index = st.selectbox('Table or sheet', range(len(tables)), format_func=lambda i: tables[i].title)
             table = tables[index]
-            if not table.rows:
-                raise ValueError('The selected table is empty.')
-            header = st.number_input('Header row (first row is 1)', min_value=1, max_value=len(table.rows), value=guess_header(table.rows) + 1)
-            headings = table.rows[header - 1]
-            st.dataframe(pd.DataFrame(table.rows[header:header + 5]), hide_index=True)
-            guessed = header_mapping(headings)
-            mapping = {}
-            with st.expander('Map columns', expanded=True):
-                for field, label in FIELDS.items():
-                    choices = [None] + list(range(len(headings)))
-                    mapping[field] = st.selectbox(label, choices, index=choices.index(guessed.get(field)),
-                        format_func=lambda i: 'Not imported' if i is None else f'{i + 1}: {headings[i]}', key=f'map_{field}')
+            st.dataframe(pd.DataFrame(table.rows[1:], columns=table.rows[0]), hide_index=True)
             if st.button('Import table (replaces current scores)'):
-                rows, notes = scores_from_table(table, {k: v for k, v in mapping.items() if v is not None}, test, header - 1)
+                rows, notes = fixed_scores(table, test)
                 st.session_state.scores = rows
                 st.session_state.revision += 1
                 for note in notes:
@@ -119,49 +105,14 @@ def main():
         except Exception as exc:
             st.error(f'Cannot import table: {exc}')
     edited = st.data_editor(score_frame(st.session_state.scores), num_rows='dynamic', hide_index=True,
-        key=f'scores_{st.session_state.revision}',
-        column_config={'score_type': st.column_config.SelectboxColumn('Score type', options=['standard', 'scaled', 't']),
-                       'aliases': st.column_config.TextColumn('Aliases (separate with ;)')})
-    scores = scores_from_frame(edited)
+        key=f'scores_{st.session_state.revision}')
+    try:
+        scores = scores_from_frame(edited, test)
+        score_errors = []
+    except ValueError as exc:
+        scores, score_errors = [], [str(exc)]
 
-    st.subheader('2. Set descriptive ranges')
-    policy = st.radio('Category source', ['imported', 'rules'], horizontal=True,
-        format_func=lambda x: 'Imported labels, then rules' if x == 'imported' else 'Cutoff rules only')
-    if test == 'PAI':
-        st.caption('PAI requires named scale rules or imported labels. No blanket T-score classification is applied.')
-    config = deepcopy(st.session_state.rules)
-    with st.expander('Edit cutoff ranges'):
-        group = st.selectbox('Rule group', ['standard', 'scaled'] if test != 'PAI' else ['Named scale'])
-        name = st.text_input('Named scale/subtest override (optional)' if test != 'PAI' else 'Scale name or code (e.g. ANX)')
-        bands = config['overrides'].get(name.strip(), []) if name.strip() else (config[group] if group != 'Named scale' else [])
-        ranges = st.data_editor(pd.DataFrame(bands, columns=['min', 'max', 'label']), num_rows='dynamic', hide_index=True,
-            key=f'ranges_{test}_{group}_{name}', column_config={
-                'min': st.column_config.NumberColumn('Minimum', step=1),
-                'max': st.column_config.NumberColumn('Maximum', step=1)})
-        if st.button('Apply cutoff ranges'):
-            try:
-                parsed = []
-                for row in ranges.to_dict('records'):
-                    lo, hi = float(row['min']), float(row['max'])
-                    if not lo.is_integer() or not hi.is_integer():
-                        raise ValueError('Cutoff endpoints must be whole numbers.')
-                    parsed.append({'min': int(lo), 'max': int(hi), 'label': str(row['label'] or '')})
-                if name.strip():
-                    config['overrides'][name.strip()] = parsed
-                elif group == 'Named scale':
-                    raise ValueError('Enter a scale name first.')
-                else:
-                    config[group] = parsed
-                problems = validate_rules(config, test)
-                if problems:
-                    raise ValueError('\n'.join(problems))
-                st.session_state.rules = config
-                st.success('Cutoff rules applied.')
-            except (ValueError, TypeError) as exc:
-                st.error(str(exc))
-                config = deepcopy(st.session_state.rules)
-
-    st.subheader('3. Import your wording')
+    st.subheader('2. Import your wording')
     template_upload = st.file_uploader('Report template', type=['txt', 'md', 'docx'])
     if st.button('Load uploaded template', disabled=template_upload is None):
         try:
@@ -170,6 +121,7 @@ def main():
             st.session_state.wording = template.text
         except Exception as exc:
             st.error(f'Cannot load template: {exc}')
+    st.caption('Your uploaded text appears below after you click Load uploaded template. You can edit it here. Word formatting is retained on export when this text is unchanged.')
     text = st.text_area('Report wording', key='wording', height=280,
         help='Example: Word Reading was {{Word Reading.category}} (SS = {{Word Reading.score}}).')
     original = st.session_state.template
@@ -178,12 +130,11 @@ def main():
         st.caption('Edited Word text will export with standard formatting. Reload the original to retain its formatting.')
     auto = st.checkbox('Insert scores after matching measure names', value=True)
     pr = st.checkbox('Include percentile ranks', value=True)
-    ci = st.checkbox('Include confidence intervals', value=False)
-    first = st.checkbox('Annotate only the first mention', value=False)
-    options = dict(auto_insert=auto, include_percentile=pr, include_ci=ci, first_only=first, policy=policy)
+    options = dict(auto_insert=auto, include_percentile=pr, include_ci=False, first_only=False, policy='rules')
 
-    st.subheader('4. Review and download')
-    errors, notes = review(test, scores, st.session_state.rules, policy)
+    st.subheader('3. Review and download')
+    errors, notes = review(test, scores, st.session_state.rules, 'rules')
+    errors.extend(score_errors)
     if not scores:
         errors.append('Import or enter at least one score.')
     if not text.strip():
@@ -205,7 +156,8 @@ def main():
     st.text_area('Report preview', value=result.text, height=300, disabled=True)
     if result.errors:
         return
-    st.download_button('Download text report', result.text, 'Measure-report.txt', mime='text/plain')
+    st.caption('Word (.docx) is an editable document with formatting. Plain text (.txt) contains the same report wording without formatting.')
+    st.download_button('Download plain text (.txt)', result.text, 'Measure-report.txt', mime='text/plain')
     try:
         word, word_result = render_docx(template, renderer())
         if word_result.errors:
@@ -214,7 +166,7 @@ def main():
         else:
             for warning in word_result.warnings:
                 st.warning(warning)
-            st.download_button('Download Word report', word, 'Measure-report.docx',
+            st.download_button('Download Word document (.docx)', word, 'Measure-report.docx',
                 mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
     except Exception as exc:
         st.error(f'Word export unavailable: {exc}')

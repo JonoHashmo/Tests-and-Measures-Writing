@@ -1,9 +1,9 @@
 Cognitive Assessment
 
-Full Scale IQ was in the {{FSIQ.category}} range (SS = {{FSIQ.score}}, percentile rank = {{FSIQ.percentile}}, confidence interval = {{FSIQ.ci}}).
+Full Scale IQ was in the {{FSIQ.category}} range (SS = {{FSIQ.score}}, percentile rank = {{FSIQ.percentile}}).
 
 Verbal Comprehension was in the {{Verbal Comprehension.category}} range (SS = {{Verbal Comprehension.score}}, percentile rank = {{Verbal Comprehension.percentile}}).
 
-Coding yielded a scaled score of {{Coding.score}} ({{Coding.category}}). Vocabulary yielded a scaled score of {{Vocabulary.score}} ({{Vocabulary.category}}).
+Coding yielded a scaled score of {{Coding.score}}. Vocabulary yielded a scaled score of {{Vocabulary.score}}.
 
 These scores should be considered alongside observations, history, and the other assessment findings.

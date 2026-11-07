@@ -1,0 +1,150 @@
+{
+  "WIAT-4": {
+    "status": "Owner-defined standard-score categories. Scores outside 40\u2013160 have no configured category.",
+    "aliases": {},
+    "rules": {
+      "standard": [
+        {
+          "min": 40,
+          "max": 54,
+          "label": "Very Low"
+        },
+        {
+          "min": 55,
+          "max": 69,
+          "label": "Low"
+        },
+        {
+          "min": 70,
+          "max": 84,
+          "label": "Below Average"
+        },
+        {
+          "min": 85,
+          "max": 115,
+          "label": "Average"
+        },
+        {
+          "min": 116,
+          "max": 130,
+          "label": "Above Average"
+        },
+        {
+          "min": 131,
+          "max": 145,
+          "label": "High"
+        },
+        {
+          "min": 146,
+          "max": 160,
+          "label": "Very High"
+        }
+      ],
+      "scaled": [],
+      "t": [],
+      "overrides": {}
+    }
+  },
+  "WAIS-5": {
+    "status": "Owner-defined standard-score categories. Scaled-score categories pending.",
+    "aliases": {},
+    "rules": {
+      "standard": [
+        {
+          "min": 1,
+          "max": 69,
+          "label": "Extremely Low"
+        },
+        {
+          "min": 70,
+          "max": 79,
+          "label": "Very Low"
+        },
+        {
+          "min": 80,
+          "max": 89,
+          "label": "Below Average"
+        },
+        {
+          "min": 90,
+          "max": 109,
+          "label": "Average"
+        },
+        {
+          "min": 110,
+          "max": 119,
+          "label": "Above Average"
+        },
+        {
+          "min": 120,
+          "max": 129,
+          "label": "Very High"
+        },
+        {
+          "min": 130,
+          "max": 250,
+          "label": "Extremely High"
+        }
+      ],
+      "scaled": [],
+      "t": [],
+      "overrides": {}
+    }
+  },
+  "WAIS-IV": {
+    "status": "Owner-defined standard-score categories. Scaled-score categories pending.",
+    "aliases": {},
+    "rules": {
+      "standard": [
+        {
+          "min": 1,
+          "max": 69,
+          "label": "Extremely Low"
+        },
+        {
+          "min": 70,
+          "max": 79,
+          "label": "Very Low"
+        },
+        {
+          "min": 80,
+          "max": 89,
+          "label": "Below Average"
+        },
+        {
+          "min": 90,
+          "max": 109,
+          "label": "Average"
+        },
+        {
+          "min": 110,
+          "max": 119,
+          "label": "Above Average"
+        },
+        {
+          "min": 120,
+          "max": 129,
+          "label": "Very High"
+        },
+        {
+          "min": 130,
+          "max": 250,
+          "label": "Extremely High"
+        }
+      ],
+      "scaled": [],
+      "t": [],
+      "overrides": {}
+    }
+  },
+  "PAI": {
+    "status": "PAI scale-specific categories pending.",
+    "aliases": {},
+    "rules": {
+      "standard": [],
+      "scaled": [],
+      "t": [],
+      "overrides": {}
+    }
+  }
+}
