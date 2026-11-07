@@ -56,8 +56,6 @@ class Score:
             problems.append(f"{self.name}: score must be a finite number.")
         elif self.score_type == "scaled" and not 1 <= self.score <= 19:
             problems.append(f"{self.name}: scaled score is outside 1–19; check the score type.")
-        elif self.score_type == "standard" and not 1 <= self.score <= 250:
-            problems.append(f"{self.name}: standard score is outside the supported range 1–250.")
         elif self.score_type == "t" and not 0 <= self.score <= 150:
             problems.append(f"{self.name}: T score is outside the supported range 0–150.")
         if self.score is not None and isinstance(self.score, (int, float)) and math.isfinite(self.score):

@@ -5,7 +5,6 @@ from tempfile import TemporaryDirectory
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
-from openpyxl.worksheet.datavalidation import DataValidation
 
 from measure.catalog import CATALOGS
 from measure.importers import read_tables
@@ -30,12 +29,6 @@ def excel_template(test):
     for cell in sheet[1]:
         cell.font = Font(bold=True, color='FFFFFF')
         cell.fill = PatternFill('solid', fgColor='245F58')
-    validation = DataValidation(type='whole', operator='between', formula1=0, formula2=250, allow_blank=True)
-    validation.errorTitle = 'Enter a numeric score'
-    validation.error = 'Use a whole standardized score; leave unused rows blank.'
-    validation.showErrorMessage = True
-    sheet.add_data_validation(validation)
-    validation.add('B2:B1000')
     output = BytesIO()
     workbook.save(output)
     return output.getvalue()

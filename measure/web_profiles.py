@@ -43,10 +43,6 @@ def fixed_scores(table, test):
         if known is None:
             raise ImportProblem(f'Row {i}: {row[0]!r} is not a recognized name for {test}. Use a name from the reference table.')
         codes = parse_strengths(value)
-        if codes and (test == 'PAI' or known.kind != 'standard'):
-            raise ImportProblem(f'{known.name}: strengths are supported only for WIAT composites and WAIS indexes, not subtests or PAI scales.')
-        if codes and test == 'WIAT-4' and known.name not in WIAT_COMPOSITES:
-            raise ImportProblem(f'{known.name}: strengths are supported only for composites, not WIAT subtests.')
         key = normalize(known.name)
         labels = ', '.join(codes)
         if key in strengths and strengths[key] != labels:
@@ -61,12 +57,5 @@ def fixed_scores(table, test):
     return scores, notes
 
 
-WIAT_COMPOSITES = frozenset((
-    'Total Achievement', 'Reading', 'Written Expression', 'Mathematics',
-    'Basic Reading', 'Decoding', 'Reading Fluency', 'Math Fluency', 'Writing Fluency',
-    'Oral Language', 'Phonological Processing', 'Orthographic Processing', 'Dyslexia Index',
-))
-
-
 def columns_for(test):
-    return COLUMNS if test == 'PAI' else COLUMNS + ['strengths']
+    return COLUMNS + ['strengths']

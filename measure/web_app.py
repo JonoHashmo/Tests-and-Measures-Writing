@@ -12,13 +12,11 @@ import streamlit as st
 from measure.catalog import TESTS, reference_sections
 from measure.documents import Template, load_template, render_docx
 from measure.engine import Renderer, missing_mentions, review
-from measure.importers import Table, read_tables, parse_delimited
+from measure.importers import Table, parse_delimited
 from measure.web_profiles import COLUMNS, fixed_scores, profile_for, columns_for
 from measure.web_spreadsheets import EXCEL_MIME, excel_template, read_score_upload
 from measure.rules import category_for
 from measure.strengths import DEFAULT_DEFINITIONS, CODES, strength_text
-
-EXAMPLES = Path(__file__).resolve().parents[1] / 'examples'
 
 
 def uploaded_file(upload, reader):
@@ -58,16 +56,6 @@ def go(step):
     st.rerun()
 
 
-def load_example(test):
-    stem = {'WIAT-4': 'WIAT4', 'WAIS-5': 'WAIS5', 'PAI': 'PAI'}[test]
-    table = read_tables(EXAMPLES / f'{stem}_scores.csv')[0]
-    st.session_state.scores, _ = fixed_scores(table, test)
-    template = load_template(EXAMPLES / f'{stem}_template.txt')
-    st.session_state.template = template
-    st.session_state.wording = template.text
-    st.session_state.revision += 1
-
-
 def main():
     st.set_page_config(page_title='Measure | Report workspace', page_icon='📄', layout='wide')
     st.markdown('''<style>
@@ -94,7 +82,7 @@ def main():
                 st.session_state.scores = st.session_state.current_scores
                 st.session_state.revision += 1
             go(step - 1)
-    if st.sidebar.button('Clear session'):
+    if st.sidebar.button('Restart'):
         reset_workspace()
         st.rerun()
     if step == 0:
@@ -117,8 +105,6 @@ def main():
     st.title(test)
     st.caption("Don't forget to download your report at the end!")
     if step == 1:
-        if st.button('Try fictional example'):
-            load_example(test)
         score_step(test)
     elif step == 2:
         wording_step()
@@ -131,7 +117,7 @@ def score_step(test):
     st.caption('Download the template below or use your own. Make sure to use column names: ' + ', '.join(columns_for(test)) + '.')
     st.download_button('Download Excel score template (.xlsx)', excel_template(test), f'{test}-score-template.xlsx', mime=EXCEL_MIME)
     if test in DEFAULT_DEFINITIONS:
-        st.caption('For composites/indexes only, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable.')
+        st.caption('For any measure, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable.')
         if 'definitions' not in st.session_state:
             st.session_state.definitions = dict(DEFAULT_DEFINITIONS[test])
         with st.expander('Strength and weakness definitions (edit for this report)'):
@@ -219,7 +205,8 @@ def wording_step():
             st.session_state.editor_wording = template.text
         except Exception as exc:
             st.error(f'Cannot load template: {exc}')
-    st.caption('Upload a file above, or simply paste/type your report text in the box below. Uploaded text appears here after you click Load uploaded template. You can edit it here.')
+    st.subheader('Or paste your report wording here')
+    st.caption('Paste or type your report text below. If you uploaded a file, click Load uploaded template to show its text here. You can edit it in this box.')
     text = st.text_area('Report wording', key='editor_wording', value=st.session_state.wording, height=280,
         placeholder='Paste your report wording here, or upload a template above.',
         help='Paste text directly from Word or another editor. Example: Word Reading was in the XX range (SS = XX, XX%ile).')
@@ -229,9 +216,6 @@ def wording_step():
     if original.docx_bytes and template is not original:
         st.caption('Edited Word text will export with standard formatting. Reload the original to retain its formatting.')
     st.caption('To report scores, end the sentence with (SS = XX, XX%ile). The app replaces that marker; mentions without a marker are left alone. For several measures in one sentence, name the result: (Mathematics: SS = XX, XX%ile). Strength/weakness explanations follow the score parentheses as separate sentences, with each code defined only on its first use.')
-    auto = st.checkbox('Fill blank score parentheses at sentence ends', value=st.session_state.auto)
-    pr = st.checkbox('Include percentile ranks', value=st.session_state.pr)
-    st.session_state.auto, st.session_state.pr = auto, pr
     if st.button('Continue to review', disabled=not text.strip()):
         go(3)
 
@@ -241,7 +225,7 @@ def review_step(test):
     text = st.session_state.wording
     original = st.session_state.template
     template = original if original.docx_bytes and text == original.original_text else Template(text)
-    options = dict(auto_insert=st.session_state.auto, include_percentile=st.session_state.pr,
+    options = dict(auto_insert=True, include_percentile=True,
                    include_ci=False, first_only=False, policy='rules', report_style='narrative',
                    strength_definitions=st.session_state.get('definitions', {}), marker_only=True)
     st.subheader('4. Review and download')
@@ -296,11 +280,11 @@ def report_error(message):
     suffix = ': category is missing; fill it in or remove that placeholder.'
     if message.endswith(suffix):
         name = message[:-len(suffix)]
-        return (f'Your wording asks for a descriptive label for {name}, such as “Average”, '
-                'but the app has no label available for this score. '
-                f'Go back to Report wording and remove {{{{{name}.category}}}} '
-                '(or the equivalent abbreviation placeholder), and adjust the sentence to use the score instead. '
-                'Downloads are paused until this request for a missing label is removed or the app owner configures the needed score ranges.')
+        return (f'{name}: no descriptive category is configured for this measure or score. '
+                'Your score has not been changed. Ask the app owner to supply the category definitions, '
+                'or go back to Report wording and remove the request for a category '
+                '(for example, “in the XX range”) while keeping the score marker. '
+                'The report can be downloaded once no missing category is requested.')
     return message
 
 

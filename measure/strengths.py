@@ -3,6 +3,12 @@ import re
 
 CODES = ('NS', 'PS', 'NW', 'PW')
 DEFAULT_DEFINITIONS = {
+    'PAI': {
+        'NS': 'Normative Strength (NS)',
+        'PS': 'Personal Strength (PS)',
+        'NW': 'Normative Weakness (NW)',
+        'PW': 'Personal Weakness (PW)',
+    },
     'WIAT-4': {
         'NS': 'Normative Strength (NS), meaning her performance was higher than that of average peers her age',
         'PS': 'Personal Strength (PS), meaning she performed better on this composite than on composites measuring other abilities',

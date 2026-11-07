@@ -86,6 +86,15 @@ def computed_category(row: Score, config: dict, test: str = "") -> str:
         for band in bands:
             if band["min"] <= row.score <= band["max"]:
                 return band["label"]
+        # Standard-score reporting categories extend beyond their outer endpoints.
+        # Scale-specific PAI overrides keep their explicitly configured intervals.
+        if bands and row.score_type == 'standard':
+            lowest = min(bands, key=lambda band: band['min'])
+            highest = max(bands, key=lambda band: band['max'])
+            if row.score < lowest['min']:
+                return lowest['label']
+            if row.score > highest['max']:
+                return highest['label']
     return ""
 
 
