@@ -1,0 +1,9 @@
+Academic Achievement
+
+Overall performance on Total Achievement was considered {{Total Achievement.category}} (SS = {{Total Achievement.score}}, percentile rank = {{Total Achievement.percentile}}).
+
+The Reading composite and Written Expression composite provide additional information about academic performance.
+
+Word Reading and Reading Comprehension were examined individually. Mathematics was also assessed.
+
+These scores should be considered alongside observations, history, and the other assessment findings.

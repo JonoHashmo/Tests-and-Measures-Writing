@@ -1,0 +1,7 @@
+Personality Assessment Inventory
+
+Inconsistency and Infrequency were reviewed along with Negative Impression Management and Positive Impression Management.
+
+ANX had a T score of {{ANX.score}}. DEP had a T score of {{DEP.score}}.
+
+Interpretation of these results requires the complete profile, validity indicators, clinical history, and assessment context.
