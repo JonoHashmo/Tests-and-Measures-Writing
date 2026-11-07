@@ -13,7 +13,7 @@ DEFAULT_DEFINITIONS = {
         'NS': 'Normative Strength (NS), meaning her performance was higher than that of her average peers',
         'PS': 'Personal Strength (PS), meaning she performed better on this Index than on Indexes measuring other abilities',
         'NW': 'Normative Weakness (NW), meaning her performance was much lower than that of her average peers',
-        'PW': 'Personal Weakness (PW) for Carolina, meaning her performance was much lower than on other measures of her ability',
+        'PW': 'Personal Weakness (PW), meaning her performance was much lower than on other measures of her ability',
     },
 }
 
