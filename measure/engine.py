@@ -130,7 +130,8 @@ class Renderer:
             label = self.strength_definitions[code].strip().rstrip(',. ')
             if code in self.defined_strengths:
                 subject = f' for {self.subject_name}' if self.subject_name else ''
-                parts.append(f'a {code}{subject}')
+                article = 'an' if code in ('NS', 'NW') else 'a'
+                parts.append(f'{article} {code}{subject}')
             else:
                 parts.append(f'a {label}')
                 self.defined_strengths.add(code)

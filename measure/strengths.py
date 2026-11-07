@@ -2,6 +2,32 @@
 import re
 
 CODES = ('NS', 'PS', 'NW', 'PW')
+PRONOUNS = ('She / her', 'He / him', 'They / them')
+
+
+def change_pronouns(text, previous, selected):
+    forms = {
+        'She / her': ('she', 'her', 'her', 'hers', 'herself'),
+        'He / him': ('he', 'him', 'his', 'his', 'himself'),
+        'They / them': ('they', 'them', 'their', 'theirs', 'themself'),
+    }
+    source, target = forms[previous], forms[selected]
+    # In these definitions "her"/"his" before a noun is possessive.
+    mapping = dict(zip(source, target))
+    mapping[source[2]] = target[2]
+    def substitute(match):
+        word = mapping[match.group().lower()]
+        return word.capitalize() if match.group()[0].isupper() else word
+    text = re.sub(r'\b(?:' + '|'.join(mapping) + r')\b', substitute, text, flags=re.I)
+    if selected == 'They / them':
+        for old, new in (('was', 'were'), ('is', 'are'), ('has', 'have'), ('does', 'do')):
+            text = re.sub(r'\b(they)\s+' + old + r'\b', lambda m: m.group(1) + ' ' + new, text, flags=re.I)
+    elif previous == 'They / them':
+        for old, new in (('were', 'was'), ('are', 'is'), ('have', 'has'), ('do', 'does')):
+            text = re.sub(r'\b(' + target[0] + r')\s+' + old + r'\b', lambda m: m.group(1) + ' ' + new, text, flags=re.I)
+    return text
+
+
 DEFAULT_DEFINITIONS = {
     'PAI': {
         'NS': 'Normative Strength (NS)',

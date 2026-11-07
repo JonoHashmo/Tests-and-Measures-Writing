@@ -3,28 +3,20 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
-from tempfile import TemporaryDirectory
 
 # Works with `streamlit run measure/web_app.py` from a repository checkout.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import streamlit as st
 from measure.catalog import TESTS, reference_sections
-from measure.documents import Template, load_template, render_docx
+from measure.documents import Template, render_docx
 from measure.engine import Renderer, missing_mentions, review
 from measure.importers import Table, parse_delimited
 from measure.web_profiles import COLUMNS, fixed_scores, profile_for, columns_for
 from measure.web_spreadsheets import EXCEL_MIME, excel_template, read_score_upload
+from measure.web_privacy import read_template_upload, clear_framework_session_files
 from measure.rules import category_for
-from measure.strengths import DEFAULT_DEFINITIONS, CODES, strength_text
-
-
-def uploaded_file(upload, reader):
-    """Existing path-based readers get an isolated, short-lived file."""
-    with TemporaryDirectory(prefix='measure-upload-') as directory:
-        path = Path(directory) / ('upload' + Path(upload.name).suffix.lower())
-        path.write_bytes(upload.getvalue())
-        return reader(path)
+from measure.strengths import DEFAULT_DEFINITIONS, CODES, strength_text, PRONOUNS, change_pronouns
 
 
 def score_frame(scores, test):
@@ -47,6 +39,7 @@ def scores_from_frame(frame, test):
 
 
 def reset_workspace():
+    clear_framework_session_files()
     for key in list(st.session_state):
         del st.session_state[key]
 
@@ -112,6 +105,16 @@ def main():
         review_step(test)
 
 
+def update_definition_pronouns():
+    previous = st.session_state.get('pronouns_mode', 'She / her')
+    selected = st.session_state.pronouns_widget
+    for code in CODES:
+        value = change_pronouns(st.session_state.definitions[code], previous, selected)
+        st.session_state.definitions[code] = value
+        st.session_state[f'definition_{code}'] = value
+    st.session_state.pronouns_mode = selected
+
+
 def score_step(test):
     st.subheader('2. Import and review scores')
     st.caption('Download the template below or use your own. Make sure to use column names: ' + ', '.join(columns_for(test)) + '.')
@@ -120,10 +123,16 @@ def score_step(test):
         st.caption('For any measure, enter NS, PS, NW, or PW in strengths. Combine labels with commas, such as NS, PS. Leave blank when not applicable.')
         if 'definitions' not in st.session_state:
             st.session_state.definitions = dict(DEFAULT_DEFINITIONS[test])
+        st.radio('Pronouns for strength and weakness definitions', PRONOUNS,
+            index=PRONOUNS.index(st.session_state.get('pronouns_mode', 'She / her')),
+            key='pronouns_widget', horizontal=True, on_change=update_definition_pronouns)
         with st.expander('Strength and weakness definitions (edit for this report)'):
             st.caption('Edit names and pronouns to fit your report. Changes apply to this session and selected test.')
             for code in CODES:
-                value = st.text_area(code, value=st.session_state.definitions[code], key=f'definition_{code}')
+                key = f'definition_{code}'
+                if key not in st.session_state:
+                    st.session_state[key] = st.session_state.definitions[code]
+                value = st.text_area(code, key=key)
                 st.session_state.definitions[code] = value
     with st.expander('Accepted names' if test == 'WIAT-4' else 'Accepted names and abbreviations'):
         for title, measures in reference_sections(test):
@@ -199,7 +208,7 @@ def wording_step():
     template_upload = st.file_uploader('Report template', type=['txt', 'md', 'docx'])
     if st.button('Load uploaded template', disabled=template_upload is None):
         try:
-            template = uploaded_file(template_upload, load_template)
+            template = read_template_upload(template_upload)
             st.session_state.template = template
             st.session_state.wording = template.text
             st.session_state.editor_wording = template.text

@@ -45,7 +45,7 @@ For each test, replace `rules.standard` / `rules.scaled` with inclusive `min`, `
 
 ## Data handling
 
-Use fictional data on free online hosting. Uploaded files and report text are transmitted to the hosting server. The app keeps working state in the browser session's server memory, uses automatically deleted temporary files for imports, and adds no case database or shared cache. Hosting providers have their own logging, retention, and access policies. Closing/reloading/disconnecting can lose work; download reports before leaving. **Restart** clears the application's current working state.
+Use fictional data on free online hosting. Uploaded files and report text are transmitted to the hosting server. The app keeps working state in the browser session's server memory, reads uploads in memory without writing imported content to temporary files, and adds no case database or shared cache. Hosting providers have their own logging, retention, and access policies. Closing/reloading/disconnecting can lose work; download reports before leaving. **Restart** clears the application's current working state.
 
 The original desktop edition remains available through `app.py`. Its local-processing statement does not apply to the online edition. The web edition currently downloads reports, not reusable desktop project files.
 
@@ -70,3 +70,14 @@ In Score table, expand **Strength and weakness definitions (edit for this report
 Strength/weakness definitions are separate sentences after score parentheses, never inside them. Each code is defined only on its first use in the report; subsequent uses show just the code . For exact placement, use `{{Mathematics.strengths}}`; `{{Mathematics.score_summary}}` supplies only score/percentile information. Plain `{{Mathematics.summary}}` includes scores and the category; place `{{Mathematics.strengths}}` after the score parentheses for strength sentences. Explicitly requesting strengths for a measure with no entered labels is flagged instead of inventing them.
 
 The app contains no AI and does not calculate assessment scores, percentiles, score differences, statistical significance, or strength/weakness labels. It copies user-entered results, checks their format, looks up descriptive categories in the configured ranges, and inserts selected definitions. Ordinal suffixes and document formatting change presentation only.
+
+Select **She / her**, **He / him**, or **They / them** in Score table to update strength/weakness definitions for this report. This selection applies to those definitions only; it does not rewrite the uploaded report wording. You can still edit each definition directly. Repeated labels use “an NS”, “an NW”, “a PS”, and “a PW”.
+
+
+### Privacy audit and limits
+
+The browser entry point does not import the desktop project-saving interface, call AI services, issue custom external HTTP requests, or cache report data globally. Imports use in-memory buffers. Working data exists in server-side session memory. Restart clears application state and explicitly releases the current session's uploaded-file and generated-download references through Streamlit's managers; other live sessions are not cleared. This is reference removal, not cryptographic erasure of memory. Downloads already saved on a user's computer cannot be deleted by Restart.
+
+`measure/.streamlit/config.toml` requests no usage telemetry, immediate eligibility for disconnected-session cleanup (`disconnectedSessionTTL = 0`), disabled static-file serving, and hidden error details. Include this hidden folder when uploading to GitHub. Streamlit's cleanup timing is framework-controlled; immediate physical erasure after tab closure is not guaranteed. The local launcher also disables usage statistics.
+
+**Community Cloud limitation:** https://docs.streamlit.io/deploy/streamlit-community-cloud/status explicitly lists `browser.gatherUsageStats = true` among hosting overrides. Consequently, a deployment on Community Cloud cannot be certified to have no non-report network traffic. Hosting infrastructure can also process connection metadata and logs; this source audit does not verify provider retention, swap, backups, or browser storage. The app has no infrastructure-level outbound network firewall. To enforce the strict no-third-party-network requirement, run locally or use controlled hosting with telemetry disabled and outbound access denied after dependencies are installed. This is not a claim of regulatory certification.

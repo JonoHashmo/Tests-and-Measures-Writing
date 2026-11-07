@@ -1,13 +1,12 @@
 """Excel templates and explicit, non-destructive upload validation."""
 from io import BytesIO
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
 
 from measure.catalog import CATALOGS
-from measure.importers import read_tables
+from measure.web_privacy import read_score_bytes
 from measure.web_profiles import columns_for
 
 EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
@@ -41,10 +40,7 @@ def read_score_upload(upload):
     if suffix not in ('.xlsx', '.csv'):
         raise ValueError('Unsupported file type. Upload an Excel (.xlsx) workbook or CSV (.csv). In Numbers, choose File → Export To → Excel first.')
     try:
-        with TemporaryDirectory(prefix='measure-scores-') as directory:
-            path = Path(directory) / ('scores' + suffix)
-            path.write_bytes(upload.getvalue())
-            tables = read_tables(path)
+        tables = read_score_bytes(upload.getvalue(), suffix)
         if not tables or not any(table.rows for table in tables):
             raise ValueError('The file contains no readable score tables.')
         return tables

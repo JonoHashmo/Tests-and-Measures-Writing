@@ -14,4 +14,4 @@ fi
 if ! "$MEASURE_WEB_ENV/bin/python" -c 'import streamlit, docx, openpyxl, pdfplumber' >/dev/null 2>&1; then
     "$MEASURE_WEB_ENV/bin/python" -m pip install -r measure/requirements.txt
 fi
-exec "$MEASURE_WEB_ENV/bin/python" -m streamlit run measure/web_app.py --server.address localhost --browser.gatherUsageStats false
+exec "$MEASURE_WEB_ENV/bin/python" -m streamlit run measure/web_app.py --server.address localhost --browser.gatherUsageStats false --server.disconnectedSessionTTL 0
