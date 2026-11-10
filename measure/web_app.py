@@ -9,13 +9,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import pandas as pd
 import streamlit as st
 from measure.catalog import TESTS, reference_sections
-from measure.documents import Template, render_docx
-from measure.engine import Renderer, missing_mentions, review
+from measure.documents import Template
+from measure.engine import Renderer, review
 from measure.importers import Table, parse_delimited
 from measure.web_profiles import COLUMNS, fixed_scores, profile_for, columns_for
 from measure.web_spreadsheets import EXCEL_MIME, excel_template, read_score_upload
 from measure.web_privacy import read_template_upload, clear_framework_session_files
 from measure.rules import category_for
+from measure.web_output import copy_report, report_text_bytes
 from measure.strengths import DEFAULT_DEFINITIONS, CODES, strength_text, PRONOUNS, change_pronouns
 
 
@@ -220,10 +221,7 @@ def wording_step():
         placeholder='Paste your report wording here, or upload a template above.',
         help='Paste text directly from Word or another editor. Example: Word Reading was in the XX range (SS = XX, XX%ile).')
     st.session_state.wording = text
-    original = st.session_state.template
-    template = original if original.docx_bytes and text == original.original_text else Template(text)
-    if original.docx_bytes and template is not original:
-        st.caption('Edited Word text will export with standard formatting. Reload the original to retain its formatting.')
+    st.caption('Copying and saving the report preserves its text and paragraph breaks. Apply fonts and other formatting in your own Word document.')
     st.caption('To report scores, end the sentence with (SS = XX, XX%ile). The app replaces that marker; mentions without a marker are left alone. For several measures in one sentence, name the result: (Mathematics: SS = XX, XX%ile). Strength/weakness explanations follow the score parentheses as separate sentences, with each code defined only on its first use.')
     if st.button('Continue to review', disabled=not text.strip()):
         go(3)
@@ -232,8 +230,6 @@ def wording_step():
 def review_step(test):
     scores = st.session_state.scores
     text = st.session_state.wording
-    original = st.session_state.template
-    template = original if original.docx_bytes and text == original.original_text else Template(text)
     options = dict(auto_insert=True, include_percentile=True,
                    include_ci=False, first_only=False, policy='rules', report_style='narrative',
                    strength_definitions=st.session_state.get('definitions', {}), marker_only=True)
@@ -269,20 +265,10 @@ def review_step(test):
     if result.errors:
         return
     st.success("DONE! 🎉 The boilerplate parts of your report are ready! Don't forget to add context-specific interpretations at the end of each paragraph. 🙂")
-    st.caption('Word (.docx) is an editable document with formatting. Plain text (.txt) contains the same report wording without formatting.')
-    st.download_button('Download plain text (.txt)', result.text, 'Measure-report.txt', mime='text/plain')
-    try:
-        word, word_result = render_docx(template, renderer())
-        if word_result.errors:
-            for error in word_result.errors:
-                st.error(report_error(error))
-        else:
-            for warning in word_result.warnings:
-                st.warning(warning)
-            st.download_button('Download Word document (.docx)', word, 'Measure-report.docx',
-                mime='application/vnd.openxmlformats-officedocument.wordprocessingml.document')
-    except Exception as exc:
-        st.error(f'Word export unavailable: {exc}')
+    st.caption('Copy the report and paste it into your Word document. Both copying and saving include only the report text and paragraph breaks.')
+    copy_report(data={'text': result.text}, key='copy_report')
+    st.download_button('Save .txt', report_text_bytes(result.text), 'Measure-report.txt',
+        mime='text/plain; charset=utf-8')
 
 
 def report_error(message):

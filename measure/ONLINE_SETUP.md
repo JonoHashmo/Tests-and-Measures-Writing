@@ -32,8 +32,14 @@ Open `http://localhost:8501` in Chrome if the browser does not open automaticall
 1. Start by selecting an assessment and clicking **Continue**. Only test selection appears on the opening screen. The left sidebar shows the current step, **Back a step**, and **Restart**.
 2. Download the selected assessment's **Excel (.xlsx) score template**. Its measure names and the accepted-name reference list belong only to that assessment. The headers must be exactly `name,score,percentile`, in that order, with no extra columns. Fill in only the scores you want to report. Leave unused score/percentile cells blank or delete unused rows; a complete assessment battery is not required. Percentile can be blank; do not enter raw scores. CSV and Excel (.xlsx) are supported. The app determines score types from recognized names and rejects unknown names.
 3. Import the completed table, or paste copied Excel/Numbers cells, including headers, into **Or paste your score table here**. Click outside the box to load the table automatically; no import button is needed. The score editor appears only after scores are loaded. Pasted CSV text is also accepted. Invalid pasted tables leave current scores unchanged. Review or edit its three columns. Accepted full names and abbreviations are listed beside the template download.
-4. Click **Continue to wording**, then upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste/type your text directly into **Report wording** without uploading anything. Pasting uses plain text and standard export formatting. The Report wording box shows the uploaded text and permits edits. Use automatic name matching or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`.
-5. Click **Continue to review** and review the completed report. Word (.docx) is an editable document with formatting; plain text (.txt) contains the same wording without formatting. Unedited Word templates retain supported formatting; editing their text creates a fresh Word document. The editor displays text, not a visual facsimile of Word pages.
+4. Click **Continue to wording**, then upload your Word/TXT/Markdown wording and click **Load uploaded template**, or paste/type your text directly into **Report wording** without uploading anything. The Report wording box shows the uploaded text and permits edits. Word uploads supply body and table paragraph text only; their formatting, headers, footers, images, and embedded document objects are not included in the browser report. Use sentence-ending score markers or placeholders such as `{{FSIQ.score}}` and `{{FSIQ.category}}`.
+5. Click **Continue to review** and review the completed report. Click **Copy report** to copy only the report's plain text, then paste it into your own Word document. Or choose **Save .txt** to download the same text as a backup. The browser edition no longer generates or downloads Word documents.
+
+### Plain-text report output
+
+**Copy report** writes plain text to the clipboard, not HTML, RTF, or Word document objects. Paragraph breaks and the report's wording are preserved; apply your own formatting in Word. If Chrome blocks clipboard access, use the displayed plain-text fallback to select the report and copy manually with Command-C on Mac or Ctrl-C on Windows.
+
+**Save .txt** downloads the exact final report text encoded as UTF-8. Its contents include no app headings, instructions, HTML wrappers, formatting, or embedded files. Both actions use the same report text shown in the preview. Restart does not erase a report already copied to the system clipboard or saved on your computer.
 
 Apple Numbers `.numbers` files are not imported directly. Open the workbook in Numbers and use **File → Export To → Excel**, then upload the exported `.xlsx` file. Renaming `.numbers` to `.xlsx` does not convert it. Unsupported, unreadable, or damaged files display an error without replacing current scores. CSV remains supported for imports. Uploaded files are read without modifying the original workbook.
 
@@ -45,9 +51,9 @@ For each test, replace `rules.standard` / `rules.scaled` with inclusive `min`, `
 
 ## Data handling
 
-Use fictional data on free online hosting. Uploaded files and report text are transmitted to the hosting server. The app keeps working state in the browser session's server memory, reads uploads in memory without writing imported content to temporary files, and adds no case database or shared cache. Hosting providers have their own logging, retention, and access policies. Closing/reloading/disconnecting can lose work; download reports before leaving. **Restart** clears the application's current working state.
+Use fictional data on free online hosting. Uploaded files and report text are transmitted to the hosting server. The app keeps working state in the browser session's server memory, reads uploads in memory without writing imported content to temporary files, and adds no case database or shared cache. Hosting providers have their own logging, retention, and access policies. Closing/reloading/disconnecting can lose work; copy the report or save its text before leaving. **Restart** clears the application's current working state.
 
-The original desktop edition remains available through `app.py`. Its local-processing statement does not apply to the online edition. The web edition currently downloads reports, not reusable desktop project files.
+The original desktop edition remains available through `app.py`. Its local-processing statement does not apply to the online edition. The web edition outputs plain-text reports, not reusable desktop project files.
 
 ### Report score formatting
 
